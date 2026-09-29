@@ -7,6 +7,7 @@ import { createCpu, LEVELS, LEVEL_ORDER } from './cpu.js';
 import { createScore, speak, renderScoreboard } from './scoring.js';
 import { createWorld } from './world.js';
 import { renderPairing, remoteUrl } from './pairing.js';
+import { CPU_USER, saveMatch } from './api.js';
 
 const GRAVITY = -9.8;
 const SWING_BUFFER_MS = 350; // a swing slightly before the ball arrives still connects
@@ -18,7 +19,7 @@ const mirror = (t, i) => (i === 0 ? t : { ...t, x: -t.x, z: -t.z });
 
 // The host screen runs the whole match: vs CPU, two phones on this screen,
 // or against an online guest screen (which joins the same relay room).
-export function startHost() {
+export function startHost({ mode: startMode = 'cpu', p1, p2 = null }) {
   const room = Math.random().toString(36).slice(2, 7).toUpperCase();
   const world = createWorld();
   const { ball, players, env, impact } = world;
@@ -29,7 +30,11 @@ export function startHost() {
 
   let mode = 'cpu'; // cpu | versus
   let online = false;
+  let guestUser = null; // profile of the online opponent
   const phones = { 1: false, 2: false };
+  // Profiles for the two seats; results are saved when both are known.
+  const seatUsers = () => [p1, mode === 'cpu' ? CPU_USER : online ? guestUser : p2];
+  const playerNames = () => seatUsers().map((u, i) => u?.name || `Player ${i + 1}`);
 
   const send = connectRelay(room, 'game', (msg) => {
     if (msg.type === 'swing') swing((msg.player || 1) - 1, msg.shot, msg.power, true);
@@ -41,7 +46,8 @@ export function startHost() {
     }
     if (msg.type === 'ping') send({ type: 'pong', t: msg.t });
     if (msg.type === 'guest-connected') { online = true; sentBoard = sentMessage = null; setMode('versus'); }
-    if (msg.type === 'guest-disconnected') { online = false; updatePanel(); updateModeButtons(); }
+    if (msg.type === 'guest-hello') { online = true; guestUser = msg.user; setMode('versus'); }
+    if (msg.type === 'guest-disconnected') { online = false; guestUser = null; setMode(mode); }
   });
 
   // ---------- Effects (also mirrored to the online guest) ----------
@@ -57,8 +63,9 @@ export function startHost() {
 
   // ---------- Pairing panel ----------
   function updatePanel() {
-    const cards = [{ title: mode === 'cpu' ? 'Your phone' : 'Player 1 phone', url: remoteUrl(room, 1), connected: phones[1] }];
-    if (mode === 'versus' && !online) cards.push({ title: 'Player 2 phone', url: remoteUrl(room, 2), connected: phones[2] });
+    const names = playerNames();
+    const cards = [{ title: `${names[0]}'s phone`, url: remoteUrl(room, 1), connected: phones[1] }];
+    if (mode === 'versus' && !online) cards.push({ title: `${names[1]}'s phone`, url: remoteUrl(room, 2), connected: phones[2] });
     const hint = mode === 'versus' && !online
       ? 'No phones? P1: D / A / W · P2: L / J / I (forehand / backhand / serve).'
       : 'No phone? D = forehand, A = backhand, W = serve/smash (SPACE or click picks for you).';
@@ -80,7 +87,7 @@ export function startHost() {
   }
   function setMode(m) {
     mode = m;
-    score.setNames(m === 'cpu' ? ['You', 'CPU'] : ['Player 1', 'Player 2']);
+    score.setNames(playerNames());
     score.resetSet();
     ai.reset();
     renderScoreboard(scoreEl, score);
@@ -225,6 +232,8 @@ export function startHost() {
     fx.cheer(mode === 'cpu' && winner === 1 ? 0.4 : 1);
     let text = `${why} ${result.announce}`;
     if (result.setWon) {
+      const [u1, u2] = seatUsers();
+      if (u1 && u2) saveMatch(u1, u2, score.display.games).catch(() => {});
       // Like Wii Tennis: show the final result, then start a fresh set.
       setTimeout(() => { score.resetSet(); renderScoreboard(scoreEl, score); }, 2500);
     }
@@ -325,7 +334,7 @@ export function startHost() {
 
   const clock = new THREE.Clock();
   setLevel(0);
-  setMode('cpu');
+  setMode(startMode);
 
   function animate() {
     const dt = Math.min(clock.getDelta(), 0.033);

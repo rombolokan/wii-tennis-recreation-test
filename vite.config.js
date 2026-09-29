@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { WebSocketServer } from 'ws';
+import { apiStore } from './server/store.js';
 
 // Relays messages between a game screen and phone remotes that share a room code.
 function remoteRelay() {
@@ -39,11 +40,11 @@ function remoteRelay() {
 }
 
 export default defineConfig({
-  plugins: [remoteRelay()],
+  plugins: [remoteRelay(), apiStore()],
   server: { watch: { usePolling: true } },
   build: {
     rollupOptions: {
-      input: { main: resolve('index.html'), remote: resolve('remote.html') },
+      input: { main: resolve('index.html'), remote: resolve('remote.html'), stats: resolve('stats.html') },
     },
   },
 });
