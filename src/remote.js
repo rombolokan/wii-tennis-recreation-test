@@ -37,9 +37,10 @@ const calPrompt = () => {
   shotEl.textContent = `Swing a ${LABELS[calOrder[calStep]].toUpperCase()} (${n}/${EXAMPLES_PER_TYPE})`;
 };
 
-const detector = createSwingDetector(({ feature, type, power }) => {
+const detector = createSwingDetector(({ feature, type, power, raw, spin }) => {
   if (calStep >= 0) {
     detector.addExample(calOrder[calStep], feature);
+    detector.addStrength(raw);
     navigator.vibrate?.(40);
     calStep++;
     if (calStep === calOrder.length) {
@@ -49,12 +50,13 @@ const detector = createSwingDetector(({ feature, type, power }) => {
     } else calPrompt();
     return;
   }
-  swing(type, power);
+  swing(type, power, spin);
 });
 
-function swing(type, power) {
-  shotEl.textContent = `${LABELS[type]} · ${Math.round(power * 100)}% power`;
-  send({ type: 'swing', player, shot: type, power });
+function swing(type, power, spin) {
+  const spinText = spin > 0.3 ? ' · topspin' : spin < -0.3 ? ' · slice' : '';
+  shotEl.textContent = `${LABELS[type]} · ${Math.round(power * 100)}% power${spinText}`;
+  send({ type: 'swing', player, shot: type, power, spin });
 }
 
 document.getElementById('start').onclick = async (ev) => {

@@ -10,6 +10,7 @@ const COOLDOWN_MS = 500;
 const TRIGGER = 9; // m/s² — low enough that gentle swings register
 export const EXAMPLES_PER_TYPE = 3;
 const STORAGE_KEY = 'swingExamples.v2';
+const STRENGTH_KEY = 'swingStrength.v1'; // this player's typical (calibration) swing strength
 
 const norm = (v) => {
   const m = Math.hypot(...v) || 1;
@@ -22,6 +23,7 @@ export function createSwingDetector(onSwing) {
   let lastSwing = 0;
   let captureStart = null;
   let examples = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); // type -> [feature]
+  let strengths = JSON.parse(localStorage.getItem(STRENGTH_KEY) || '[]');
 
   const isCalibrated = () => ['forehand', 'backhand', 'serve'].every((t) => examples[t]?.length);
 
@@ -47,11 +49,12 @@ export function createSwingDetector(onSwing) {
     const win = samples.filter((s) => s.t >= captureStart - PRE_MS);
     captureStart = null;
     lastSwing = now;
-    let peakLin = 0, peak = win[0];
+    let peakLin = 0, peak = win[0], up = 0;
     const rot = [0, 0, 0];
     for (const s of win) {
       rot[0] += s.a; rot[1] += s.b; rot[2] += s.g;
       peakLin = Math.max(peakLin, s.lin);
+      up += s.up;
       if (s.speed > peak.speed) peak = s;
     }
     const feature = [
@@ -59,9 +62,14 @@ export function createSwingDetector(onSwing) {
       ...norm([peak.a, peak.b, peak.g]),
       ...norm(win[0].grav).map((x) => x * 0.7),
     ];
-    // Power blends how hard the phone was thrust and how fast it rotated.
-    const power = clamp(0.5 * (peakLin - TRIGGER) / 22 + 0.5 * peak.speed / 1100, 0.1, 1);
-    onSwing({ feature, type: classify(feature), power });
+    // Raw strength blends how hard the phone was thrust and how fast it rotated.
+    const raw = Math.max(0.05, 0.5 * (peakLin - TRIGGER) / 22 + 0.5 * peak.speed / 1100);
+    // Scale to this player: their normal calibration swing ≈ 65%, 1.5× that = full power.
+    const avg = strengths.length ? strengths.reduce((a, b) => a + b, 0) / strengths.length : 0.6;
+    const power = clamp(Math.pow(raw / (avg * 1.5), 1.3), 0.1, 1);
+    // Spin: net vertical racket movement vs. total effort. Up = topspin, down = slice.
+    const spin = clamp(up / (win.reduce((a, s) => a + s.lin, 0) || 1) * 2, -1, 1);
+    onSwing({ feature, type: classify(feature), power, raw, spin });
   }
 
   function handle(e) {
@@ -73,7 +81,13 @@ export function createSwingDetector(onSwing) {
     const lin = l
       ? Math.hypot(l.x || 0, l.y || 0, l.z || 0)
       : Math.abs(Math.hypot(grav.x || 0, grav.y || 0, grav.z || 0) - 9.8);
-    samples.push({ t: now, a, b, g, speed: Math.hypot(a, b, g), lin, grav: [grav.x || 0, grav.y || 0, grav.z || 0] });
+    // Vertical component of the motion: project linear accel onto "up" (gravity direction).
+    let up = 0;
+    if (l) {
+      const gx = (grav.x || 0) - (l.x || 0), gy = (grav.y || 0) - (l.y || 0), gz = (grav.z || 0) - (l.z || 0);
+      up = ((l.x || 0) * gx + (l.y || 0) * gy + (l.z || 0) * gz) / (Math.hypot(gx, gy, gz) || 1);
+    }
+    samples.push({ t: now, a, b, g, up, speed: Math.hypot(a, b, g), lin, grav: [grav.x || 0, grav.y || 0, grav.z || 0] });
     while (samples.length && now - samples[0].t > PRE_MS + POST_MS + 200) samples.shift();
 
     if (captureStart != null) {
@@ -85,11 +99,18 @@ export function createSwingDetector(onSwing) {
 
   return {
     handle,
+    addStrength(raw) {
+      strengths.push(raw);
+      localStorage.setItem(STRENGTH_KEY, JSON.stringify(strengths));
+    },
     addExample(type, feature) {
       (examples[type] ||= []).push(feature);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(examples));
     },
-    clearExamples() { examples = {}; localStorage.removeItem(STORAGE_KEY); },
+    clearExamples() {
+      examples = {}; strengths = [];
+      localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(STRENGTH_KEY);
+    },
     isCalibrated,
   };
 }

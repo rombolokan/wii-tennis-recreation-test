@@ -7,20 +7,33 @@ const L = COURT.halfLength;
 // Power (0.1–1, from how hard you swing) controls both speed and depth:
 // a gentle swing is a slow, short ball; a hard swing is a fast, deep one.
 const depth = (power, min, max) => -L * (min + (max - min) * power + rand(-0.05, 0.05));
+// aim: -1 = swung early (cross-court) … +1 = swung late (down the line).
+// Forehands go cross-court toward -x, backhands toward +x (mirrored for down the line).
+const aimX = (aim, crossSide) => Math.max(-3.8, Math.min(3.8, crossSide * (1.2 - aim * 2.4 + rand(-0.4, 0.4))));
 export const SHOTS = {
   forehand: {
     label: 'FOREHAND!',
-    target: (power) => ({ x: rand(-3.6, -1), z: depth(power, 0.45, 0.92), flight: 1.75 - power * 1.0 }),
+    target: (power, aim = 0) => ({ x: aimX(aim, -1), z: depth(power, 0.45, 0.92), flight: 1.75 - power * 1.0 }),
   },
   backhand: {
     label: 'BACKHAND!',
-    target: (power) => ({ x: rand(1, 3.6), z: depth(power, 0.4, 0.85), flight: 1.85 - power * 0.95 }),
+    target: (power, aim = 0) => ({ x: aimX(aim, 1), z: depth(power, 0.4, 0.85), flight: 1.85 - power * 0.95 }),
   },
   serve: { // In a rally an overhead swing is a smash.
     label: 'SMASH!',
     target: (power) => ({ x: rand(-3.5, 3.5), z: depth(power, 0.5, 0.88), flight: 1.0 - power * 0.45 }),
   },
 };
+
+// Spin from the racket's vertical path: up = topspin (safe, deep), down = slice (low, short),
+// a soft upward swing = lob (high and deep).
+export function applySpin(shot, t, power, spin = 0) {
+  if (shot === 'serve') return { ...t, spinLabel: '' };
+  if (spin > 0.3 && power < 0.4) return { ...t, z: -L * 0.88, flight: 2.4, spinLabel: 'LOB' };
+  if (spin > 0.3) return { ...t, z: t.z * 1.05, flight: t.flight + 0.15, spinLabel: 'TOPSPIN' };
+  if (spin < -0.3) return { ...t, z: t.z * 0.8, flight: t.flight + 0.3, spinLabel: 'SLICE' };
+  return { ...t, spinLabel: '' };
+}
 
 // "POWER FOREHAND!" / "soft forehand" so the player sees their swing strength.
 export function shotLabel(label, power) {

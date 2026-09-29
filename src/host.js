@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { connectRelay } from './relay.js';
 import { COURT } from './scene.js';
-import { SHOTS, serveTarget, poseArm, shotLabel } from './shots.js';
+import { SHOTS, applySpin, serveTarget, poseArm, shotLabel } from './shots.js';
 import { unlockAudio, playHit } from './effects.js';
 import { createCpu, LEVELS, LEVEL_ORDER } from './cpu.js';
 import { createScore, speak, renderScoreboard } from './scoring.js';
@@ -32,7 +32,7 @@ export function startHost() {
   const phones = { 1: false, 2: false };
 
   const send = connectRelay(room, 'game', (msg) => {
-    if (msg.type === 'swing') swing((msg.player || 1) - 1, msg.shot, msg.power, true);
+    if (msg.type === 'swing') swing((msg.player || 1) - 1, msg.shot, msg.power, true, msg.spin);
     if (msg.type === 'remote-connected' || msg.type === 'remote-disconnected') {
       const p = msg.player || 1;
       phones[p] = msg.type === 'remote-connected';
@@ -179,7 +179,7 @@ export function startHost() {
     contact(i, s.label, power, fromRemote);
   }
 
-  function swing(i, shot, power = 0.7, fromRemote = false) {
+  function swing(i, shot, power = 0.7, fromRemote = false, spin = 0) {
     if (mode === 'cpu' && i === 1) return;
     const p = players[i];
     if (!SHOTS[shot]) shot = (ball.position.x - p.position.x) * side(i) >= 0 ? 'forehand' : 'backhand';
@@ -188,7 +188,7 @@ export function startHost() {
       return;
     }
     anim[i] = { shot, time: performance.now() };
-    if (state === 'rally' && lastHitter === 1 - i) pending[i] = { shot, power, time: performance.now(), fromRemote };
+    if (state === 'rally' && lastHitter === 1 - i) pending[i] = { shot, power, spin, time: performance.now(), fromRemote };
   }
 
   function tryPendingHit(i) {
@@ -202,9 +202,13 @@ export function startHost() {
     const d = ball.position.distanceTo(players[i].position.clone().setY(1));
     if (d < REACH && Math.sign(ball.position.z) === side(i)) {
       pending[i] = null;
-      const t = mirror(SHOTS[pend.shot].target(pend.power), i);
+      // Timing: swung long before contact = early (cross-court), right at contact = late (down the line).
+      const aim = 1 - 2 * Math.min(1, (performance.now() - pend.time) / SWING_BUFFER_MS);
+      const s = applySpin(pend.shot, SHOTS[pend.shot].target(pend.power, aim), pend.power, pend.spin);
+      const t = mirror(s, i);
       hitTo(t.x, t.z, t.flight);
-      contact(i, shotLabel(SHOTS[pend.shot].label, pend.power), pend.power, pend.fromRemote);
+      const label = shotLabel(SHOTS[pend.shot].label, pend.power);
+      contact(i, s.spinLabel ? `${s.spinLabel} ${label}` : label, pend.power, pend.fromRemote);
     }
   }
 
