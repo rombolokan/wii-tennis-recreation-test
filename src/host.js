@@ -173,7 +173,7 @@ export function startHost() {
   function toss(i) {
     tossed = true;
     anim[i] = { shot: 'toss', time: performance.now() };
-    vel.set(0, 5, 0);
+    vel.set(0, 7.5, 0); // high toss: ~1.5s in the air
     showMessage(`${mode === 'cpu' ? '' : `${score.names[i]}: `}Now swing!`, 900);
   }
 
