@@ -34,17 +34,43 @@ export function createWorld() {
   resize();
 
   const players = [p1, p2];
+  // Camera sits behind the given player (0 = near side, 1 = far side).
+  function aim(view, shake, aspect) {
+    const s = view === 0 ? 1 : -1;
+    const jitter = () => (Math.random() - 0.5) * shake;
+    camera.aspect = aspect;
+    camera.fov = aspect < 1 ? 70 : 55; // widen the view for tall half-screens
+    camera.updateProjectionMatrix();
+    camera.position.set(players[view].position.x * 0.5 + jitter(), 5 + jitter(), s * (COURT.halfLength + 8));
+    camera.lookAt(0, 0, -2 * s);
+  }
+  function update() {
+    impact.update();
+    env.update(performance.now() / 1000);
+  }
   return {
     ball, players, env, impact,
-    // Camera sits behind the given player (0 = near side, 1 = far side).
     render(view, shake = 0) {
-      const s = view === 0 ? 1 : -1;
-      const jitter = () => (Math.random() - 0.5) * shake;
-      camera.position.set(players[view].position.x * 0.5 + jitter(), 5 + jitter(), s * (COURT.halfLength + 8));
-      camera.lookAt(0, 0, -2 * s);
-      impact.update();
-      env.update(performance.now() / 1000);
+      renderer.setScissorTest(false);
+      renderer.setViewport(0, 0, innerWidth, innerHeight);
+      aim(view, shake, innerWidth / innerHeight);
+      update();
       renderer.render(scene, camera);
+    },
+    // Same-screen 2 players: left half = Player 1's view, right half = Player 2's view.
+    renderSplit(shake = 0) {
+      update();
+      const w = Math.floor(innerWidth / 2), gap = 2;
+      renderer.setScissorTest(true);
+      renderer.setClearColor(0x111111);
+      renderer.clear();
+      [0, 1].forEach((view) => {
+        const x = view * (w + gap / 2), vw = w - gap / 2;
+        renderer.setViewport(x, 0, vw, innerHeight);
+        renderer.setScissor(x, 0, vw, innerHeight);
+        aim(view, shake, vw / innerHeight);
+        renderer.render(scene, camera);
+      });
     },
   };
 }

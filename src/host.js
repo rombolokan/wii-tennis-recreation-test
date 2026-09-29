@@ -336,7 +336,8 @@ export function startHost() {
     step(dt);
     movePlayers(dt);
     shake *= 0.85;
-    world.render(0, shake);
+    if (mode === 'versus' && !online) world.renderSplit(shake);
+    else world.render(0, shake);
     syncGuest();
     requestAnimationFrame(animate);
   }
