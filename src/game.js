@@ -104,8 +104,16 @@ function resetForServe() {
 }
 
 // Launch ball from its current position to land at (tx, tz) with a given flight time.
+// If that arc would hit the net, slow the shot down (higher arc) until it clears.
 function hitTo(tx, tz, flight) {
   const p = ball.position;
+  const clearsNet = (f) => {
+    if (Math.sign(p.z) === Math.sign(tz)) return true;
+    const t = (p.z / (p.z - tz)) * f; // time when the ball crosses z = 0
+    const vy = 0.5 * -GRAVITY * f - p.y / f;
+    return p.y + vy * t + 0.5 * GRAVITY * t * t > COURT.netHeight + 0.25;
+  };
+  while (!clearsNet(flight) && flight < 3) flight += 0.05;
   vel.set((tx - p.x) / flight, 0.5 * -GRAVITY * flight - p.y / flight, (tz - p.z) / flight);
 }
 
