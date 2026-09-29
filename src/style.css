@@ -16,6 +16,9 @@ canvas { display: block; }
 #mode button.active { background: #2a8cff; color: #fff; }
 #message { margin-top: 10px; color: #fff; font-size: 20px; font-weight: 600; text-shadow: 0 2px 4px #0008; }
 #pair { position: fixed; right: 16px; bottom: 16px; background: #fffe; padding: 12px; border-radius: 12px; font-size: 13px; text-align: center; max-width: 360px; box-shadow: 0 2px 8px #0003; }
+#pair { bottom: 56px; }
+#pair[hidden] { display: none; }
+#pair-toggle { position: fixed; right: 16px; bottom: 16px; border: 0; background: #fffe; padding: 8px 14px; border-radius: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px #0003; }
 #pair .cards { display: flex; gap: 10px; justify-content: center; }
 #pair .card { width: 160px; }
 #pair img { width: 140px; height: 140px; margin: 6px auto; display: block; }

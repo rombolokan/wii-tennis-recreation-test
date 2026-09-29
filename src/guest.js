@@ -47,7 +47,7 @@ export function startGuest(room) {
   const KEYS = { KeyD: 'forehand', KeyA: 'backhand', KeyW: 'serve', Space: 'auto' };
   const swing = (shot) => { unlockAudio(); send({ type: 'swing', player: 2, shot, power: 0.7 }); };
   addEventListener('keydown', (e) => KEYS[e.code] && swing(KEYS[e.code]));
-  addEventListener('pointerdown', (e) => !e.target.closest('#pair') && swing('auto'));
+  addEventListener('pointerdown', (e) => !e.target.closest('#pair, #pair-toggle') && swing('auto'));
 
   // Smooth online play: extrapolate the ball along its arc from the last update, looking
   // ahead by the network round trip so it's shown where it will be when our swing lands

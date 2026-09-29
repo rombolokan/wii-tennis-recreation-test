@@ -250,7 +250,7 @@ export function startHost() {
     if (i === 1 && online) return; // the online guest controls player 2
     swing(i, shot);
   });
-  addEventListener('pointerdown', (e) => { unlockAudio(); if (!e.target.closest('#pair, #controls')) swing(0, 'auto'); });
+  addEventListener('pointerdown', (e) => { unlockAudio(); if (!e.target.closest('#pair, #pair-toggle, #controls')) swing(0, 'auto'); });
 
   // ---------- Loop ----------
   function step(dt) {
