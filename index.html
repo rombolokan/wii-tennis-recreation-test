@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wii Tennis Recreation</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="hud">
+    <div id="score">You 0 – 0 CPU</div>
+    <div id="message">Press SPACE / click to serve</div>
+  </div>
+  <div id="pair">
+    <div><b>Use your phone as the remote</b></div>
+    <img id="qr" alt="QR code" />
+    <div id="remote-url"></div>
+    <div id="remote-status">Phone: not connected</div>
+    <div class="hint">No phone? Press SPACE or click to swing.</div>
+  </div>
+  <script type="module" src="/src/game.js"></script>
+</body>
+</html>
