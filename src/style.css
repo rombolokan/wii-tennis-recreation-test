@@ -1,7 +1,12 @@
 html, body { margin: 0; height: 100%; overflow: hidden; font-family: system-ui, sans-serif; }
 canvas { display: block; }
 #hud { position: fixed; top: 16px; left: 0; right: 0; text-align: center; pointer-events: none; }
-#score { display: inline-block; background: #fffe; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 22px; box-shadow: 0 2px 8px #0003; }
+#score { display: inline-block; background: #fffe; padding: 6px 14px; border-radius: 14px; font-weight: 700; font-size: 18px; box-shadow: 0 2px 8px #0003; }
+#score table { border-collapse: collapse; }
+#score th { font-size: 11px; color: #789; text-transform: uppercase; padding: 0 10px; }
+#score td { padding: 2px 10px; min-width: 36px; }
+#score td.you { color: #2a8cff; text-align: left; }
+#score td.cpu { color: #ff5a5a; text-align: left; }
 #difficulty { margin-top: 8px; pointer-events: auto; display: inline-flex; gap: 4px; background: #fffc; padding: 4px; border-radius: 16px; }
 #difficulty button { border: 0; background: transparent; padding: 4px 12px; border-radius: 12px; font-weight: 600; cursor: pointer; }
 #difficulty button.active { background: #ff5a5a; color: #fff; }

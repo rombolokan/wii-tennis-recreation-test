@@ -4,6 +4,8 @@ import { buildCourt, makePlayer, COURT } from './scene.js';
 import { SHOTS, serveTarget, poseArm } from './shots.js';
 import { unlockAudio, playHit, createImpactFlash } from './effects.js';
 import { createCpu, LEVELS, LEVEL_ORDER } from './cpu.js';
+import { createScore, speak, renderScoreboard } from './scoring.js';
+import { buildBeach } from './beach.js';
 
 // ---------- Remote pairing ----------
 const room = Math.random().toString(36).slice(2, 7).toUpperCase();
@@ -19,13 +21,13 @@ const sendToRemote = connectRelay(room, 'game', (msg) => {
 });
 
 // ---------- Scene ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8ecdf5);
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 600);
 buildCourt(scene);
+const env = buildBeach(scene);
 const impact = createImpactFlash(scene);
 
 const player = makePlayer(0x2a8cff);
@@ -79,7 +81,7 @@ const vel = new THREE.Vector3();
 let state = 'serve'; // serve | rally | point
 let lastHitter = null;
 let bounces = 0;
-let score = { you: 0, cpu: 0 };
+const score = createScore();
 let swingAnim = { shot: null, time: -1 };
 let pending = null; // { shot, power, time, fromRemote }
 let hitStopUntil = 0;
@@ -168,20 +170,27 @@ function awardPoint(winner, why) {
   state = 'point';
   pending = null;
   ai.reset();
-  score[winner]++;
-  scoreEl.textContent = `You ${score.you} – ${score.cpu} CPU`;
-  let text = `${winner === 'you' ? 'Your' : 'CPU'} point! ${why}`;
+  const result = score.pointWon(winner === 'you' ? 0 : 1);
+  renderScoreboard(scoreEl, score);
+  speak(result.announce);
+  env.cheer(winner === 'you' ? 1 : 0.4);
+  let text = `${why} ${result.announce}`;
+  if (result.setWon) {
+    // Like Wii Tennis: show the final result, then start a fresh set.
+    setTimeout(() => { score.resetSet(); renderScoreboard(scoreEl, score); }, 2500);
+  }
   // Opponent gets tougher as you keep winning points.
   if (winner === 'you' && ++pointsAtLevel >= POINTS_TO_LEVEL_UP && levelIndex < LEVEL_ORDER.length - 1) {
     setLevel(levelIndex + 1);
     text += ` Level up: ${ai.level.label}!`;
   }
   showMessage(text);
-  setTimeout(resetForServe, 1500);
+  setTimeout(resetForServe, result.setWon ? 3000 : 1800);
 }
 
 // ---------- Loop ----------
 const clock = new THREE.Clock();
+renderScoreboard(scoreEl, score);
 resetForServe();
 
 function step(dt) {
@@ -243,6 +252,7 @@ function animate() {
   step(dt);
   movePlayers(dt);
   impact.update();
+  env.update(performance.now() / 1000);
   shake *= 0.85;
   camera.position.set(player.position.x * 0.5 + (Math.random() - 0.5) * shake, 5 + (Math.random() - 0.5) * shake, COURT.halfLength + 8);
   camera.lookAt(0, 0, -2);
