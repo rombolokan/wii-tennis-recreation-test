@@ -2,6 +2,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; font-family: system-ui, 
 canvas { display: block; }
 #hud { position: fixed; top: 16px; left: 0; right: 0; text-align: center; pointer-events: none; }
 #score { display: inline-block; background: #fffe; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 22px; box-shadow: 0 2px 8px #0003; }
+#difficulty { margin-top: 8px; pointer-events: auto; display: inline-flex; gap: 4px; background: #fffc; padding: 4px; border-radius: 16px; }
+#difficulty button { border: 0; background: transparent; padding: 4px 12px; border-radius: 12px; font-weight: 600; cursor: pointer; }
+#difficulty button.active { background: #ff5a5a; color: #fff; }
 #message { margin-top: 10px; color: #fff; font-size: 20px; font-weight: 600; text-shadow: 0 2px 4px #0008; }
 #pair { position: fixed; right: 16px; bottom: 16px; background: #fffe; padding: 12px; border-radius: 12px; font-size: 13px; text-align: center; width: 200px; box-shadow: 0 2px 8px #0003; }
 #qr { width: 160px; height: 160px; margin: 8px auto; display: block; }

@@ -3,6 +3,7 @@ import { connectRelay } from './relay.js';
 import { buildCourt, makePlayer, COURT } from './scene.js';
 import { SHOTS, serveTarget, poseArm } from './shots.js';
 import { unlockAudio, playHit, createImpactFlash } from './effects.js';
+import { createCpu, LEVELS, LEVEL_ORDER } from './cpu.js';
 
 // ---------- Remote pairing ----------
 const room = Math.random().toString(36).slice(2, 7).toUpperCase();
@@ -33,6 +34,27 @@ const cpu = makePlayer(0xff5a5a);
 cpu.position.set(0, 0, -COURT.halfLength - 1);
 cpu.rotation.y = Math.PI;
 scene.add(player, cpu);
+const ai = createCpu(cpu);
+
+// ---------- Difficulty ----------
+const POINTS_TO_LEVEL_UP = 5;
+let levelIndex = 0;
+let pointsAtLevel = 0;
+const levelButtons = document.getElementById('difficulty');
+function setLevel(i) {
+  levelIndex = i;
+  pointsAtLevel = 0;
+  ai.setLevel(LEVEL_ORDER[i]);
+  for (const b of levelButtons.querySelectorAll('button')) b.classList.toggle('active', b.dataset.level === LEVEL_ORDER[i]);
+}
+for (const key of LEVEL_ORDER) {
+  const b = document.createElement('button');
+  b.textContent = LEVELS[key].label;
+  b.dataset.level = key;
+  b.onclick = () => setLevel(LEVEL_ORDER.indexOf(key));
+  levelButtons.appendChild(b);
+}
+setLevel(0);
 
 const ball = new THREE.Mesh(
   new THREE.SphereGeometry(0.12, 16, 16),
@@ -60,7 +82,6 @@ let bounces = 0;
 let score = { you: 0, cpu: 0 };
 let swingAnim = { shot: null, time: -1 };
 let pending = null; // { shot, power, time, fromRemote }
-let cpuWillMiss = false;
 let hitStopUntil = 0;
 let shake = 0;
 const msgEl = document.getElementById('message');
@@ -89,7 +110,7 @@ function hitTo(tx, tz, flight) {
 function onPlayerContact(label, power, fromRemote) {
   lastHitter = 'you';
   bounces = 0;
-  cpuWillMiss = Math.random() < 0.15;
+  ai.onPlayerHit(ball, vel);
   impact.trigger(ball.position);
   playHit(power);
   hitStopUntil = performance.now() + 60;
@@ -131,23 +152,31 @@ function tryPendingHit() {
 
 const KEYS = { KeyD: 'forehand', ArrowRight: 'forehand', KeyA: 'backhand', ArrowLeft: 'backhand', KeyW: 'serve', ArrowUp: 'serve', Space: 'auto' };
 addEventListener('keydown', (e) => { if (KEYS[e.code]) { unlockAudio(); swing(KEYS[e.code]); } });
-addEventListener('pointerdown', (e) => { unlockAudio(); if (!e.target.closest('#pair')) swing('auto'); });
+addEventListener('pointerdown', (e) => { unlockAudio(); if (!e.target.closest('#pair, #difficulty')) swing('auto'); });
 
 function cpuHit() {
   lastHitter = 'cpu';
   bounces = 0;
   playHit(0.5);
-  const tx = (Math.random() - 0.5) * COURT.halfWidth * 1.6;
-  const tz = COURT.halfLength * (0.4 + Math.random() * 0.5);
-  hitTo(tx, tz, 1.1 + Math.random() * 0.4);
+  cpuSwingTime = performance.now();
+  const t = ai.chooseShot(player.position.x);
+  hitTo(t.x, t.z, t.flight);
 }
+let cpuSwingTime = -1;
 
 function awardPoint(winner, why) {
   state = 'point';
   pending = null;
+  ai.reset();
   score[winner]++;
   scoreEl.textContent = `You ${score.you} – ${score.cpu} CPU`;
-  showMessage(`${winner === 'you' ? 'Your' : 'CPU'} point! ${why}`);
+  let text = `${winner === 'you' ? 'Your' : 'CPU'} point! ${why}`;
+  // Opponent gets tougher as you keep winning points.
+  if (winner === 'you' && ++pointsAtLevel >= POINTS_TO_LEVEL_UP && levelIndex < LEVEL_ORDER.length - 1) {
+    setLevel(levelIndex + 1);
+    text += ` Level up: ${ai.level.label}!`;
+  }
+  showMessage(text);
   setTimeout(resetForServe, 1500);
 }
 
@@ -192,10 +221,7 @@ function step(dt) {
   }
 
   // CPU returns the ball
-  if (state === 'rally' && lastHitter === 'you' && bounces === 1 &&
-      ball.position.z < cpu.position.z + 1.5 && ball.position.y < 1.8) {
-    if (!cpuWillMiss) cpuHit();
-  }
+  if (state === 'rally' && lastHitter === 'you' && bounces === 1 && ai.canReach(ball)) cpuHit();
 }
 
 function movePlayers(dt) {
@@ -205,8 +231,10 @@ function movePlayers(dt) {
   };
   if (state === 'rally') {
     if (lastHitter === 'cpu') follow(player, ball.position.x + vel.x * 0.4 - 0.6, 7);
-    else follow(cpu, ball.position.x + vel.x * 0.4 + 0.6, 6);
   }
+  ai.update(dt);
+  const ct = (performance.now() - cpuSwingTime) / 250;
+  cpu.userData.arm.rotation.z = ct >= 0 && ct < 1 ? -Math.sin(ct * Math.PI) * 2 : 0;
   poseArm(player.userData.arm, swingAnim.shot, (performance.now() - swingAnim.time) / 280);
 }
 
