@@ -137,6 +137,8 @@ export function startHost() {
   let state = 'serve'; // serve | rally | point
   let server = 0;
   let serveId = 0;
+  let tossed = false; // server has thrown the ball up and must swing as it drops
+  let faults = 0; // like tennis: two tries, then the opponent gets the point
   let lastHitter = null; // 0 | 1
   let bounces = 0;
   const anim = [{ shot: null, time: -1 }, { shot: null, time: -1 }];
@@ -152,6 +154,8 @@ export function startHost() {
   function resetForServe() {
     state = 'serve';
     server = score.totalGames % 2; // serve alternates each game
+    tossed = false;
+    faults = 0;
     bounces = 0;
     lastHitter = null;
     pending[0] = pending[1] = null;
@@ -159,11 +163,38 @@ export function startHost() {
     const id = ++serveId;
     if (mode === 'cpu' && server === 1) {
       showMessage('CPU serving…');
-      setTimeout(() => id === serveId && state === 'serve' && serve(1, 'serve', 0.6, false), 1200);
+      cpuServe(id);
     } else {
       const who = mode === 'cpu' ? '' : `${score.names[server]}: `;
-      showMessage(`${who}Swing overhead to serve!`);
+      showMessage(`${who}Swing to toss the ball up, then swing again as it drops!`);
     }
+  }
+
+  // CPU tosses, then swings as the ball drops — or occasionally misses it (fault).
+  function cpuServe(id) {
+    const alive = () => id === serveId && state === 'serve';
+    setTimeout(() => {
+      if (!alive()) return;
+      toss(1);
+      if (Math.random() < ai.level.serveSuccess) setTimeout(() => alive() && tossed && serve(1, 'serve', 0.6, false), 1000);
+    }, 1200);
+  }
+
+  function toss(i) {
+    tossed = true;
+    anim[i] = { shot: 'toss', time: performance.now() };
+    vel.set(0, 7.5, 0); // high toss: ~1.5s in the air
+    if (!(mode === 'cpu' && i === 1)) showMessage(`${mode === 'cpu' ? '' : `${score.names[i]}: `}Now swing!`, 900);
+  }
+
+  // Missed the tossed ball: first time is a fault, second is a double fault.
+  function fault() {
+    tossed = false;
+    vel.set(0, 0, 0);
+    if (++faults >= 2) return awardPoint(1 - server, 'Double fault!');
+    fx.speak('Fault');
+    showMessage('Fault! Second serve — toss again.');
+    if (mode === 'cpu' && server === 1) cpuServe(serveId);
   }
 
   // Launch ball from its current position to land at (tx, tz) with a given flight time.
@@ -195,7 +226,8 @@ export function startHost() {
     const s = mirror(serveTarget(shot, power), i);
     anim[i] = { shot, time: performance.now() };
     state = 'rally';
-    ball.position.y = shot === 'serve' ? 2.5 : 0.9;
+    if (!tossed) ball.position.y = shot === 'serve' ? 2.5 : 0.9;
+    tossed = false;
     hitTo(s.x, s.z, s.flight);
     contact(i, s.label, power, fromRemote);
   }
@@ -205,7 +237,10 @@ export function startHost() {
     const p = players[i];
     if (!SHOTS[shot]) shot = (ball.position.x - p.position.x) * side(i) >= 0 ? 'forehand' : 'backhand';
     if (state === 'serve') {
-      if (server === i) serve(i, shot, power, fromRemote);
+      if (server !== i) return;
+      if (!tossed) toss(i);
+      else if (ball.position.y > 1.3) serve(i, shot, power, fromRemote); // generous window
+      else fault();
       return;
     }
     anim[i] = { shot, time: performance.now() };
@@ -279,6 +314,12 @@ export function startHost() {
 
   // ---------- Loop ----------
   function step(dt) {
+    if (state === 'serve' && tossed) {
+      vel.y += GRAVITY * dt;
+      ball.position.y += vel.y * dt;
+      if (ball.position.y < 1.0 && vel.y < 0) fault(); // let the ball drop
+      return;
+    }
     if (state === 'serve') {
       const p = players[server], s = side(server);
       ball.position.set(p.position.x + 0.5 * s, 1.2 + Math.sin(performance.now() / 200) * 0.1, p.position.z - 0.3 * s);

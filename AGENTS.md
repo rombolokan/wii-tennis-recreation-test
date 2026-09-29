@@ -6,4 +6,4 @@
 - Relay logic lives in `server/relay.js`, shared by the Vite plugin (dev) and `server/index.js` (`npm start`, production on Render — serves `dist/` + relay on one URL after `npm run build`; relay-only if no build). A separately hosted frontend can set `VITE_RELAY_URL=wss://<relay-host>`; unset = same host.
 - Phone motion (DeviceMotion) needs HTTPS; the public preview URL provides it. iOS requires tapping "enable motion" for permission.
 - QR code images come from api.qrserver.com (external, no key).
-- Verify: open `/`, read the room from the invite link in the panel, connect a WebSocket to `/relay?room=<room>&role=remote&p=1` and send `{"type":"swing","player":1,"shot":"serve"}` — panel shows "Connected ✓" and the ball is served.
+- Verify: open `/`, read the room from the invite link in the panel, connect a WebSocket to `/relay?room=<room>&role=remote&p=1` and send `{"type":"swing","player":1,"shot":"serve"}` — panel shows "Connected ✓" and the ball is tossed; a second swing while it's above 1.3m serves it (letting it drop = fault, two faults = point to opponent).

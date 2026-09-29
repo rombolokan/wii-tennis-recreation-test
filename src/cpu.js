@@ -8,9 +8,9 @@ const rand = (a, b) => a + Math.random() * (b - a);
 // flight: return shot flight time range (lower = faster) · aim: 0..1 how often it aims away from you
 // error: chance of hitting out
 export const LEVELS = {
-  easy:   { label: 'Easy',   speed: 4,   reaction: 0.35, reach: 1.6, flight: [1.4, 1.7], aim: 0.2, error: 0.12 },
-  medium: { label: 'Medium', speed: 5.5, reaction: 0.2,  reach: 1.9, flight: [1.1, 1.4], aim: 0.55, error: 0.06 },
-  hard:   { label: 'Hard',   speed: 7.5, reaction: 0.08, reach: 2.3, flight: [0.8, 1.1], aim: 0.85, error: 0.02 },
+  easy:   { label: 'Easy',   speed: 4,   reaction: 0.35, reach: 1.6, flight: [1.4, 1.7], aim: 0.2, error: 0.12, serveSuccess: 0.9 },
+  medium: { label: 'Medium', speed: 5.5, reaction: 0.2,  reach: 1.9, flight: [1.1, 1.4], aim: 0.55, error: 0.06, serveSuccess: 0.94 },
+  hard:   { label: 'Hard',   speed: 7.5, reaction: 0.08, reach: 2.3, flight: [0.8, 1.1], aim: 0.85, error: 0.02, serveSuccess: 0.97 },
 };
 export const LEVEL_ORDER = ['easy', 'medium', 'hard'];
 
