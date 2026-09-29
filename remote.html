@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#2f6fb5" />
+  <title>Tennis Remote</title>
+  <link rel="stylesheet" href="/src/remote.css" />
+</head>
+<body>
+  <main class="racket">
+    <img class="logo" src="/base44-logo.png" alt="Base44" />
+    <h1>🎾 Remote</h1>
+    <div id="status">Connecting…</div>
+    <div class="display">
+      <div class="label">Last swing</div>
+      <div id="shot">—</div>
+      <div class="meter"><div id="power"></div></div>
+    </div>
+    <button id="start" class="primary">Tap to enable motion</button>
+    <button id="calibrate" class="secondary" hidden>Calibrate swings (recommended)</button>
+    <p class="tip">Hold your phone like a racket. Swing sideways for forehand / backhand, overhead for a serve or smash.</p>
+  </main>
+  <div class="throat"></div>
+  <div class="handle shots">
+    <button data-shot="backhand">◀<span>Backhand</span></button>
+    <button data-shot="serve">▲<span>Serve</span></button>
+    <button data-shot="forehand">▶<span>Forehand</span></button>
+  </div>
+  <script type="module" src="/src/remote.js"></script>
+</body>
+</html>
