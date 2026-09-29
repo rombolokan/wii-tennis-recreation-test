@@ -27,3 +27,5 @@ canvas { display: block; }
 #pair .online { margin-top: 10px; padding-top: 8px; border-top: 1px solid #0001; }
 #pair .online button { margin-top: 6px; border: 0; background: #2a8cff; color: #fff; padding: 6px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; }
 .hint { margin-top: 6px; color: #678; }
+#alert { display: inline-block; margin-top: 10px; background: #1b1f2ae6; color: #ffd166; padding: 8px 16px; border-radius: 12px; font-weight: 700; font-size: 16px; box-shadow: 0 2px 10px #0005; }
+#alert[hidden] { display: none; }

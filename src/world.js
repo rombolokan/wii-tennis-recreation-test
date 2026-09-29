@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { buildCourt, makePlayer, COURT } from './scene.js';
+import { addCourtLogos } from './courtLogo.js';
 import { buildBeach } from './beach.js';
 import { createImpactFlash } from './effects.js';
 
@@ -11,6 +12,7 @@ export function createWorld() {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 600);
   buildCourt(scene);
+  addCourtLogos(scene);
   const env = buildBeach(scene);
   const impact = createImpactFlash(scene);
 

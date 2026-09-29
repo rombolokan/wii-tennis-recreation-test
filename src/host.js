@@ -30,19 +30,39 @@ export function startHost() {
   let mode = 'cpu'; // cpu | versus
   let online = false;
   const phones = { 1: false, 2: false };
+  const remotes = { 1: null, 2: null }; // last status each phone reported: { motion, calibrated }
+  const alertEl = document.getElementById('alert');
 
   const send = connectRelay(room, 'game', (msg) => {
     if (msg.type === 'swing') swing((msg.player || 1) - 1, msg.shot, msg.power, true, msg.spin);
     if (msg.type === 'remote-connected' || msg.type === 'remote-disconnected') {
       const p = msg.player || 1;
       phones[p] = msg.type === 'remote-connected';
+      if (phones[p]) remotes[p] ||= { motion: false, calibrated: false };
       if (p === 2 && phones[2] && mode === 'cpu') setMode('versus');
       updatePanel();
     }
+    if (msg.type === 'remote-status') { remotes[msg.player] = { motion: msg.motion, calibrated: msg.calibrated }; updateAlert(); }
     if (msg.type === 'ping') send({ type: 'pong', t: msg.t });
-    if (msg.type === 'guest-connected') { online = true; sentBoard = sentMessage = null; setMode('versus'); }
+    if (msg.type === 'guest-connected') { online = true; sentBoard = sentMessage = sentAlert = null; setMode('versus'); }
     if (msg.type === 'guest-disconnected') { online = false; updatePanel(); updateModeButtons(); }
-  });
+  }, (ok) => ok && send({ type: 'status-request' }));
+
+  // In 2-player games, warn when a phone that was paired drops out or isn't ready yet.
+  function updateAlert() {
+    const lines = [];
+    if (mode === 'versus') {
+      for (const p of [1, 2]) {
+        const r = remotes[p];
+        if (!r) continue; // never paired a phone (keyboard play)
+        if (!phones[p]) lines.push(`⚠️ Player ${p} remote disconnected`);
+        else if (!r.motion) lines.push(`📱 Player ${p}: tap "enable motion" on the phone`);
+        else if (!r.calibrated) lines.push(`🎯 Player ${p} remote needs calibration`);
+      }
+    }
+    alertEl.innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
+    alertEl.hidden = !lines.length;
+  }
 
   // ---------- Effects (also mirrored to the online guest) ----------
   const fx = {
@@ -57,6 +77,7 @@ export function startHost() {
 
   // ---------- Pairing panel ----------
   function updatePanel() {
+    updateAlert();
     const cards = [{ title: mode === 'cpu' ? 'Your phone' : 'Player 1 phone', url: remoteUrl(room, 1), connected: phones[1] }];
     if (mode === 'versus' && !online) cards.push({ title: 'Player 2 phone', url: remoteUrl(room, 2), connected: phones[2] });
     const hint = mode === 'versus' && !online
@@ -307,7 +328,7 @@ export function startHost() {
   }
 
   let lastSync = 0;
-  let sentBoard = null, sentMessage = null;
+  let sentBoard = null, sentMessage = null, sentAlert = null;
   function syncGuest() {
     const now = performance.now();
     if (!online || now - lastSync < 33) return;
@@ -323,6 +344,7 @@ export function startHost() {
     };
     // Scoreboard/message only when they change, to keep updates small.
     if (scoreEl.innerHTML !== sentBoard) msg.board = sentBoard = scoreEl.innerHTML;
+    if (alertEl.innerHTML !== sentAlert) msg.alert = sentAlert = alertEl.innerHTML;
     if (msgEl.textContent !== sentMessage) msg.message = sentMessage = msgEl.textContent;
     send(msg);
   }

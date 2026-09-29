@@ -10,7 +10,12 @@ const shotEl = document.getElementById('shot');
 const calEl = document.getElementById('calibrate');
 const LABELS = { forehand: 'Forehand', backhand: 'Backhand', serve: 'Serve / Smash' };
 
+let motionOn = false;
+// Tells the game screen whether this remote is ready (motion enabled + calibrated).
+const sendStatus = () => send({ type: 'remote-status', player, motion: motionOn, calibrated: calStep < 0 && detector.isCalibrated() });
+
 const send = connectRelay(room, 'remote', (msg) => {
+  if (msg.type === 'status-request') return sendStatus();
   if (msg.player !== player) return;
   // Feedback from the game: buzz + flash only when the racket actually met the ball.
   if (msg.type === 'hit') {
@@ -21,7 +26,9 @@ const send = connectRelay(room, 'remote', (msg) => {
     flash('#d44');
   }
 }, (ok) => {
-  statusEl.textContent = ok ? `Connected to room ${room}` : 'Reconnecting…';
+  statusEl.textContent = ok ? `Connected · room ${room}` : 'Reconnecting…';
+  statusEl.classList.toggle('ok', ok);
+  if (ok) setTimeout(sendStatus, 100);
 }, player);
 
 function flash(color) {
@@ -47,6 +54,7 @@ const detector = createSwingDetector(({ feature, type, power, raw, spin }) => {
       calStep = -1;
       calEl.textContent = 'Recalibrate swings';
       shotEl.textContent = 'Calibrated ✓ — go play!';
+      sendStatus();
     } else calPrompt();
     return;
   }
@@ -68,6 +76,8 @@ document.getElementById('start').onclick = async (ev) => {
   ev.target.textContent = 'Motion enabled ✓';
   ev.target.disabled = true;
   calEl.hidden = false;
+  motionOn = true;
+  sendStatus();
 };
 
 if (detector.isCalibrated()) calEl.textContent = 'Recalibrate swings';
@@ -75,6 +85,7 @@ calEl.onclick = () => {
   detector.clearExamples();
   calStep = 0;
   calPrompt();
+  sendStatus();
 };
 
 for (const btn of document.querySelectorAll('[data-shot]')) {

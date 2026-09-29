@@ -3,20 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f1b2d" />
   <title>Tennis Remote</title>
   <link rel="stylesheet" href="/src/remote.css" />
 </head>
 <body>
-  <h1>🎾 Remote</h1>
-  <div id="status">Connecting…</div>
-  <div id="shot">—</div>
-  <button id="start">Tap to enable motion</button>
-  <button id="calibrate" hidden>Calibrate swings (recommended)</button>
-  <p>Hold your phone like a racket. Swing sideways for forehand/backhand, overhead for a serve or smash.</p>
+  <header>
+    <h1>🎾 Remote</h1>
+    <div id="status">Connecting…</div>
+  </header>
+  <section class="display">
+    <div class="label">Last swing</div>
+    <div id="shot">—</div>
+  </section>
+  <button id="start" class="primary">Tap to enable motion</button>
+  <button id="calibrate" class="secondary" hidden>Calibrate swings (recommended)</button>
+  <p class="tip">Hold your phone like a racket. Swing sideways for forehand / backhand, overhead for a serve or smash.</p>
   <div class="shots">
-    <button data-shot="backhand">Backhand</button>
-    <button data-shot="serve">Serve</button>
-    <button data-shot="forehand">Forehand</button>
+    <button data-shot="backhand">◀<span>Backhand</span></button>
+    <button data-shot="serve">▲<span>Serve</span></button>
+    <button data-shot="forehand">▶<span>Forehand</span></button>
   </div>
   <script type="module" src="/src/remote.js"></script>
 </body>

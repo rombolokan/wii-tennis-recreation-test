@@ -16,6 +16,7 @@ export function startGuest(room) {
   const scoreEl = document.getElementById('score');
   const msgEl = document.getElementById('message');
   const panel = document.getElementById('pair');
+  const alertEl = document.getElementById('alert');
   document.getElementById('controls').hidden = true;
 
   let anim = [{ shot: null, time: -1 }, { shot: null, time: -1 }];
@@ -31,6 +32,7 @@ export function startGuest(room) {
       anim = msg.anim.map((a) => ({ shot: a.shot, time: performance.now() - a.age }));
       if (msg.board != null) scoreEl.innerHTML = msg.board;
       if (msg.message != null) msgEl.textContent = msg.message;
+      if (msg.alert != null) { alertEl.innerHTML = msg.alert; alertEl.hidden = !msg.alert; }
     } else if (msg.type === 'pong') {
       rtt = rtt * 0.7 + (performance.now() - msg.t) * 0.3;
     } else if (msg.type === 'fx') {
