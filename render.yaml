@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: wii-tennis-recreation
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
