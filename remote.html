@@ -9,9 +9,15 @@
 <body>
   <h1>🎾 Remote</h1>
   <div id="status">Connecting…</div>
+  <div id="shot">—</div>
   <button id="start">Tap to enable motion</button>
-  <button id="swing">SWING</button>
-  <p>Hold your phone like a racket and swing it. You can also tap SWING.</p>
+  <button id="calibrate" hidden>Calibrate swings (recommended)</button>
+  <p>Hold your phone like a racket. Swing sideways for forehand/backhand, overhead for a serve or smash.</p>
+  <div class="shots">
+    <button data-shot="backhand">Backhand</button>
+    <button data-shot="serve">Serve</button>
+    <button data-shot="forehand">Forehand</button>
+  </div>
   <script type="module" src="/src/remote.js"></script>
 </body>
 </html>

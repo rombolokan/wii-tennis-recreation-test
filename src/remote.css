@@ -1,4 +1,6 @@
-body { font-family: system-ui, sans-serif; background: #eef3f8; color: #223; text-align: center; padding: 24px; margin: 0; }
-button { display: block; width: 100%; margin: 16px 0; padding: 22px; font-size: 20px; border: 0; border-radius: 16px; background: #fff; box-shadow: 0 2px 6px #0002; }
-#swing { background: #2a8cff; color: #fff; font-size: 32px; padding: 60px 0; }
+body { font-family: system-ui, sans-serif; background: #eef3f8; color: #223; text-align: center; padding: 24px; margin: 0; transition: background 0.15s; }
+button { display: block; width: 100%; margin: 12px 0; padding: 20px; font-size: 20px; border: 0; border-radius: 16px; background: #fff; box-shadow: 0 2px 6px #0002; }
 #status { color: #567; }
+#shot { font-size: 30px; font-weight: 800; margin: 12px 0; min-height: 40px; }
+.shots { display: flex; gap: 8px; }
+.shots button { background: #2a8cff; color: #fff; padding: 36px 0; font-size: 17px; }

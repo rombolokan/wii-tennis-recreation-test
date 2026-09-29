@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { connectRelay } from './relay.js';
 import { buildCourt, makePlayer, COURT } from './scene.js';
+import { SHOTS, serveTarget, poseArm } from './shots.js';
+import { unlockAudio, playHit, createImpactFlash } from './effects.js';
 
 // ---------- Remote pairing ----------
 const room = Math.random().toString(36).slice(2, 7).toUpperCase();
@@ -9,8 +11,8 @@ document.getElementById('remote-url').textContent = remoteUrl;
 document.getElementById('qr').src =
   `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(remoteUrl)}`;
 const remoteStatus = document.getElementById('remote-status');
-connectRelay(room, 'game', (msg) => {
-  if (msg.type === 'swing') trySwing(msg.power);
+const sendToRemote = connectRelay(room, 'game', (msg) => {
+  if (msg.type === 'swing') swing(msg.shot, msg.power, true);
   if (msg.type === 'remote-connected') remoteStatus.textContent = 'Phone: connected ✓';
   if (msg.type === 'remote-disconnected') remoteStatus.textContent = 'Phone: not connected';
 });
@@ -23,6 +25,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x8ecdf5);
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
 buildCourt(scene);
+const impact = createImpactFlash(scene);
 
 const player = makePlayer(0x2a8cff);
 player.position.set(0, 0, COURT.halfLength + 1);
@@ -48,59 +51,92 @@ resize();
 
 // ---------- Game state ----------
 const GRAVITY = -9.8;
+const SWING_BUFFER_MS = 350; // a swing slightly before the ball arrives still connects
+const REACH = 2.6;
 const vel = new THREE.Vector3();
 let state = 'serve'; // serve | rally | point
 let lastHitter = null;
 let bounces = 0;
 let score = { you: 0, cpu: 0 };
-let swingTime = -1;
+let swingAnim = { shot: null, time: -1 };
+let pending = null; // { shot, power, time, fromRemote }
 let cpuWillMiss = false;
+let hitStopUntil = 0;
+let shake = 0;
 const msgEl = document.getElementById('message');
 const scoreEl = document.getElementById('score');
+
+function showMessage(text, ms) {
+  msgEl.textContent = text;
+  if (ms) setTimeout(() => msgEl.textContent === text && (msgEl.textContent = ''), ms);
+}
 
 function resetForServe() {
   state = 'serve';
   bounces = 0;
   lastHitter = null;
+  pending = null;
   vel.set(0, 0, 0);
-  ball.position.set(player.position.x + 0.5, 1.2, player.position.z - 0.3);
-  msgEl.textContent = 'Swing to serve!';
+  showMessage('Swing overhead to serve!');
 }
 
 // Launch ball from its current position to land at (tx, tz) with a given flight time.
 function hitTo(tx, tz, flight) {
   const p = ball.position;
-  const peakBoost = 0.5 * -GRAVITY * flight;
-  vel.set((tx - p.x) / flight, peakBoost - p.y / flight, (tz - p.z) / flight);
+  vel.set((tx - p.x) / flight, 0.5 * -GRAVITY * flight - p.y / flight, (tz - p.z) / flight);
 }
 
-function trySwing(power = 0.7) {
-  swingTime = performance.now();
+function onPlayerContact(label, power, fromRemote) {
+  lastHitter = 'you';
+  bounces = 0;
+  cpuWillMiss = Math.random() < 0.15;
+  impact.trigger(ball.position);
+  playHit(power);
+  hitStopUntil = performance.now() + 60;
+  shake = 0.15 * power;
+  showMessage(label, 700);
+  if (fromRemote) sendToRemote({ type: 'hit' });
+}
+
+function swing(shot, power = 0.7, fromRemote = false) {
+  if (!SHOTS[shot]) shot = ball.position.x >= player.position.x ? 'forehand' : 'backhand';
+  swingAnim = { shot, time: performance.now() };
   if (state === 'serve') {
+    const s = serveTarget(shot, power);
     state = 'rally';
-    lastHitter = 'you';
-    ball.position.y = 2.4;
-    hitTo((Math.random() - 0.5) * 6, -COURT.halfLength * 0.6, 1.1);
-    msgEl.textContent = '';
+    ball.position.y = shot === 'serve' ? 2.5 : 0.9;
+    hitTo(s.x, s.z, s.flight);
+    onPlayerContact(s.label, power, fromRemote);
     return;
   }
-  if (state !== 'rally' || lastHitter === 'you') return;
+  if (state === 'rally' && lastHitter === 'cpu') pending = { shot, power, time: performance.now(), fromRemote };
+}
+
+function tryPendingHit() {
+  if (!pending) return;
+  if (performance.now() - pending.time > SWING_BUFFER_MS) {
+    if (pending.fromRemote) sendToRemote({ type: 'miss' });
+    pending = null;
+    return;
+  }
   const d = ball.position.distanceTo(player.position.clone().setY(1));
-  if (d < 2.6 && ball.position.z > 0) {
-    lastHitter = 'you';
-    bounces = 0;
-    cpuWillMiss = Math.random() < 0.15;
-    const tx = (Math.random() - 0.5) * COURT.halfWidth * 1.6;
-    const tz = -COURT.halfLength * (0.4 + Math.random() * 0.5);
-    hitTo(tx, tz, 1.3 - power * 0.5);
+  if (d < REACH && ball.position.z > 0) {
+    const { shot, power, fromRemote } = pending;
+    pending = null;
+    const t = SHOTS[shot].target(power);
+    hitTo(t.x, t.z, t.flight);
+    onPlayerContact(SHOTS[shot].label, power, fromRemote);
   }
 }
-addEventListener('keydown', (e) => e.code === 'Space' && trySwing());
-addEventListener('pointerdown', (e) => !e.target.closest('#pair') && trySwing());
+
+const KEYS = { KeyD: 'forehand', ArrowRight: 'forehand', KeyA: 'backhand', ArrowLeft: 'backhand', KeyW: 'serve', ArrowUp: 'serve', Space: 'auto' };
+addEventListener('keydown', (e) => { if (KEYS[e.code]) { unlockAudio(); swing(KEYS[e.code]); } });
+addEventListener('pointerdown', (e) => { unlockAudio(); if (!e.target.closest('#pair')) swing('auto'); });
 
 function cpuHit() {
   lastHitter = 'cpu';
   bounces = 0;
+  playHit(0.5);
   const tx = (Math.random() - 0.5) * COURT.halfWidth * 1.6;
   const tz = COURT.halfLength * (0.4 + Math.random() * 0.5);
   hitTo(tx, tz, 1.1 + Math.random() * 0.4);
@@ -108,9 +144,10 @@ function cpuHit() {
 
 function awardPoint(winner, why) {
   state = 'point';
+  pending = null;
   score[winner]++;
   scoreEl.textContent = `You ${score.you} – ${score.cpu} CPU`;
-  msgEl.textContent = `${winner === 'you' ? 'Your' : 'CPU'} point! ${why}`;
+  showMessage(`${winner === 'you' ? 'Your' : 'CPU'} point! ${why}`);
   setTimeout(resetForServe, 1500);
 }
 
@@ -123,10 +160,11 @@ function step(dt) {
     ball.position.set(player.position.x + 0.5, 1.2 + Math.sin(performance.now() / 200) * 0.1, player.position.z - 0.3);
     return;
   }
-  if (state !== 'rally' && state !== 'point') return;
+  if (performance.now() < hitStopUntil) return;
 
   vel.y += GRAVITY * dt;
   ball.position.addScaledVector(vel, dt);
+  if (state === 'rally') tryPendingHit();
 
   // Bounce
   if (ball.position.y < 0.12 && vel.y < 0) {
@@ -169,16 +207,16 @@ function movePlayers(dt) {
     if (lastHitter === 'cpu') follow(player, ball.position.x + vel.x * 0.4 - 0.6, 7);
     else follow(cpu, ball.position.x + vel.x * 0.4 + 0.6, 6);
   }
-  // Swing animation
-  const t = (performance.now() - swingTime) / 250;
-  player.userData.arm.rotation.z = t >= 0 && t < 1 ? -Math.sin(t * Math.PI) * 2 : 0;
+  poseArm(player.userData.arm, swingAnim.shot, (performance.now() - swingAnim.time) / 280);
 }
 
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.033);
   step(dt);
   movePlayers(dt);
-  camera.position.set(player.position.x * 0.5, 5, COURT.halfLength + 8);
+  impact.update();
+  shake *= 0.85;
+  camera.position.set(player.position.x * 0.5 + (Math.random() - 0.5) * shake, 5 + (Math.random() - 0.5) * shake, COURT.halfLength + 8);
   camera.lookAt(0, 0, -2);
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
