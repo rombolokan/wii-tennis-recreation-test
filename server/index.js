@@ -1,5 +1,6 @@
-// Production server: serves the Vite build from dist/ and hosts the /relay WebSocket on the same port.
-import http from 'http';
+// Production server (e.g. Render). Run with `npm start` after `npm run build`.
+// Serves the built game from dist/ (when present) and the /relay WebSocket on the same port.
+import { createServer } from 'http';
 import { readFile } from 'fs/promises';
 import { extname, join, normalize } from 'path';
 import { attachRelay } from './relay.js';
@@ -10,7 +11,7 @@ const TYPES = {
   '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.json': 'application/json',
 };
 
-const server = http.createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   let path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
   if (path === '/') path = '/index.html';
   try {
@@ -18,10 +19,12 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': TYPES[extname(path)] || 'application/octet-stream' });
     res.end(body);
   } catch {
+    // No build (relay-only deployment) or unknown file.
+    if (path === '/index.html') return res.end('relay ok');
     res.writeHead(404).end('Not found');
   }
 });
 
 attachRelay(server);
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 server.listen(port, '0.0.0.0', () => console.log(`Listening on ${port}`));

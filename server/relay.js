@@ -12,7 +12,6 @@ export function attachRelay(httpServer) {
     wss.handleUpgrade(req, socket, head, (ws) => {
       const room = url.searchParams.get('room') || 'default';
       const role = url.searchParams.get('role') || 'game';
-      ws.role = role;
       if (!rooms.has(room)) rooms.set(room, new Set());
       const peers = rooms.get(room);
       peers.add(ws);

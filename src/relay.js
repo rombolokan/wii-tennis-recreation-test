@@ -4,7 +4,9 @@ export function connectRelay(room, role, onMessage, onStatus = () => {}, player 
   let ws;
   const open = () => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    ws = new WebSocket(`${proto}://${location.host}/relay?room=${room}&role=${role}&p=${player}`);
+    // VITE_RELAY_URL (e.g. wss://my-relay.onrender.com) points production builds at the hosted relay.
+    const base = import.meta.env.VITE_RELAY_URL || `${proto}://${location.host}`;
+    ws = new WebSocket(`${base}/relay?room=${room}&role=${role}&p=${player}`);
     ws.onopen = () => onStatus(true);
     ws.onclose = () => { onStatus(false); setTimeout(open, 1000); };
     ws.onmessage = (e) => onMessage(JSON.parse(e.data));
