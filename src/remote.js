@@ -1,5 +1,5 @@
 import { connectRelay } from './relay.js';
-import { createSwingDetector } from './swingDetector.js';
+import { createSwingDetector, EXAMPLES_PER_TYPE } from './swingDetector.js';
 
 const params = new URLSearchParams(location.search);
 const room = params.get('room') || 'default';
@@ -29,28 +29,31 @@ function flash(color) {
   setTimeout(() => (document.body.style.background = ''), 150);
 }
 
-// Calibration: record one example swing per type, in order.
-const calOrder = ['forehand', 'backhand', 'serve'];
+// Calibration: record several example swings per type, in order.
+const calOrder = ['forehand', 'backhand', 'serve'].flatMap((t) => Array(EXAMPLES_PER_TYPE).fill(t));
 let calStep = -1;
+const calPrompt = () => {
+  const n = (calStep % EXAMPLES_PER_TYPE) + 1;
+  shotEl.textContent = `Swing a ${LABELS[calOrder[calStep]].toUpperCase()} (${n}/${EXAMPLES_PER_TYPE})`;
+};
 
 const detector = createSwingDetector(({ feature, type, power }) => {
   if (calStep >= 0) {
-    detector.setExample(calOrder[calStep], feature);
+    detector.addExample(calOrder[calStep], feature);
+    navigator.vibrate?.(40);
     calStep++;
     if (calStep === calOrder.length) {
       calStep = -1;
       calEl.textContent = 'Recalibrate swings';
       shotEl.textContent = 'Calibrated ✓ — go play!';
-    } else {
-      shotEl.textContent = `Now swing a ${LABELS[calOrder[calStep]].toUpperCase()}`;
-    }
+    } else calPrompt();
     return;
   }
   swing(type, power);
 });
 
 function swing(type, power) {
-  shotEl.textContent = LABELS[type];
+  shotEl.textContent = `${LABELS[type]} · ${Math.round(power * 100)}% power`;
   send({ type: 'swing', player, shot: type, power });
 }
 
@@ -69,7 +72,7 @@ if (detector.isCalibrated()) calEl.textContent = 'Recalibrate swings';
 calEl.onclick = () => {
   detector.clearExamples();
   calStep = 0;
-  shotEl.textContent = 'Swing a FOREHAND';
+  calPrompt();
 };
 
 for (const btn of document.querySelectorAll('[data-shot]')) {

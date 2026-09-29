@@ -6,6 +6,8 @@ import { speak } from './scoring.js';
 import { createWorld } from './world.js';
 import { renderPairing, remoteUrl } from './pairing.js';
 
+const GRAVITY = -9.8;
+
 // Online guest: mirrors the host's match from Player 2's side. The host runs the game;
 // this screen only renders the state it receives and forwards its own swings.
 export function startGuest(room) {
@@ -25,11 +27,12 @@ export function startGuest(room) {
 
   const send = connectRelay(room, 'guest', (msg) => {
     if (msg.type === 'state') {
-      ball.position.fromArray(msg.ball);
-      msg.players.forEach(([x, z], i) => players[i].position.set(x, 0, z));
+      net = { ball: msg.ball, vel: msg.vel, players: msg.players, time: performance.now() };
       anim = msg.anim.map((a) => ({ shot: a.shot, time: performance.now() - a.age }));
-      scoreEl.innerHTML = msg.board;
-      msgEl.textContent = msg.message;
+      if (msg.board != null) scoreEl.innerHTML = msg.board;
+      if (msg.message != null) msgEl.textContent = msg.message;
+    } else if (msg.type === 'pong') {
+      rtt = rtt * 0.7 + (performance.now() - msg.t) * 0.3;
     } else if (msg.type === 'fx') {
       if (msg.kind === 'hit') { impact.trigger(new THREE.Vector3(...msg.pos)); playHit(msg.power); }
       if (msg.kind === 'cheer') env.cheer(msg.amount);
@@ -46,7 +49,30 @@ export function startGuest(room) {
   addEventListener('keydown', (e) => KEYS[e.code] && swing(KEYS[e.code]));
   addEventListener('pointerdown', (e) => !e.target.closest('#pair') && swing('auto'));
 
+  // Smooth online play: extrapolate the ball along its arc from the last update, looking
+  // ahead by the network round trip so it's shown where it will be when our swing lands
+  // on the host. Then ease toward that point so corrections never look like a jump.
+  let net = null;
+  let rtt = 80;
+  setInterval(() => send({ type: 'ping', t: performance.now() }), 2000);
+
+  function predictBall() {
+    const dt = Math.min((performance.now() - net.time + rtt) / 1000, 0.25);
+    const [x, y, z] = net.ball, [vx, vy, vz] = net.vel;
+    return new THREE.Vector3(x + vx * dt, Math.max(0.12, y + vy * dt + 0.5 * GRAVITY * dt * dt), z + vz * dt);
+  }
+
   function animate() {
+    if (net) {
+      const target = predictBall();
+      // Big jumps (new serve, hit) snap; small drift is eased.
+      if (ball.position.distanceTo(target) > 3) ball.position.copy(target);
+      else ball.position.lerp(target, 0.5);
+      net.players.forEach(([x, z], i) => {
+        players[i].position.x += (x - players[i].position.x) * 0.3;
+        players[i].position.z = z;
+      });
+    }
     players.forEach((p, i) => poseArm(p.userData.arm, anim[i].shot, (performance.now() - anim[i].time) / 280));
     world.render(1);
     requestAnimationFrame(animate);

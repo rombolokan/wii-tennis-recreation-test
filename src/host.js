@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { connectRelay } from './relay.js';
 import { COURT } from './scene.js';
-import { SHOTS, serveTarget, poseArm } from './shots.js';
+import { SHOTS, serveTarget, poseArm, shotLabel } from './shots.js';
 import { unlockAudio, playHit } from './effects.js';
 import { createCpu, LEVELS, LEVEL_ORDER } from './cpu.js';
 import { createScore, speak, renderScoreboard } from './scoring.js';
@@ -39,7 +39,8 @@ export function startHost() {
       if (p === 2 && phones[2] && mode === 'cpu') setMode('versus');
       updatePanel();
     }
-    if (msg.type === 'guest-connected') { online = true; setMode('versus'); }
+    if (msg.type === 'ping') send({ type: 'pong', t: msg.t });
+    if (msg.type === 'guest-connected') { online = true; sentBoard = sentMessage = null; setMode('versus'); }
     if (msg.type === 'guest-disconnected') { online = false; updatePanel(); updateModeButtons(); }
   });
 
@@ -203,7 +204,7 @@ export function startHost() {
       pending[i] = null;
       const t = mirror(SHOTS[pend.shot].target(pend.power), i);
       hitTo(t.x, t.z, t.flight);
-      contact(i, SHOTS[pend.shot].label, pend.power, pend.fromRemote);
+      contact(i, shotLabel(SHOTS[pend.shot].label, pend.power), pend.power, pend.fromRemote);
     }
   }
 
@@ -302,18 +303,24 @@ export function startHost() {
   }
 
   let lastSync = 0;
+  let sentBoard = null, sentMessage = null;
   function syncGuest() {
     const now = performance.now();
     if (!online || now - lastSync < 33) return;
     lastSync = now;
-    send({
+    // The ball velocity lets the guest predict motion between updates.
+    const frozen = state !== 'rally' || now < hitStopUntil;
+    const msg = {
       type: 'state',
       ball: ball.position.toArray(),
+      vel: frozen ? [0, 0, 0] : vel.toArray(),
       players: players.map((p) => [p.position.x, p.position.z]),
       anim: anim.map((a) => ({ shot: a.shot, age: now - a.time })),
-      board: scoreEl.innerHTML,
-      message: msgEl.textContent,
-    });
+    };
+    // Scoreboard/message only when they change, to keep updates small.
+    if (scoreEl.innerHTML !== sentBoard) msg.board = sentBoard = scoreEl.innerHTML;
+    if (msgEl.textContent !== sentMessage) msg.message = sentMessage = msgEl.textContent;
+    send(msg);
   }
 
   const clock = new THREE.Clock();

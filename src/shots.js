@@ -4,25 +4,35 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const L = COURT.halfLength;
 
 // Where each of the player's shots lands and how fast it flies (lower flight = faster, flatter).
+// Power (0.1–1, from how hard you swing) controls both speed and depth:
+// a gentle swing is a slow, short ball; a hard swing is a fast, deep one.
+const depth = (power, min, max) => -L * (min + (max - min) * power + rand(-0.05, 0.05));
 export const SHOTS = {
   forehand: {
     label: 'FOREHAND!',
-    target: (power) => ({ x: rand(-3.6, -1), z: -L * rand(0.65, 0.9), flight: 1.25 - power * 0.45 }),
+    target: (power) => ({ x: rand(-3.6, -1), z: depth(power, 0.45, 0.92), flight: 1.75 - power * 1.0 }),
   },
   backhand: {
     label: 'BACKHAND!',
-    target: (power) => ({ x: rand(1, 3.6), z: -L * rand(0.5, 0.75), flight: 1.5 - power * 0.3 }),
+    target: (power) => ({ x: rand(1, 3.6), z: depth(power, 0.4, 0.85), flight: 1.85 - power * 0.95 }),
   },
   serve: { // In a rally an overhead swing is a smash.
     label: 'SMASH!',
-    target: () => ({ x: rand(-3.5, 3.5), z: -L * rand(0.55, 0.85), flight: 0.6 }),
+    target: (power) => ({ x: rand(-3.5, 3.5), z: depth(power, 0.5, 0.88), flight: 1.0 - power * 0.45 }),
   },
 };
+
+// "POWER FOREHAND!" / "soft forehand" so the player sees their swing strength.
+export function shotLabel(label, power) {
+  if (power >= 0.85) return `POWER ${label}`;
+  if (power <= 0.35) return `soft ${label.toLowerCase()}`;
+  return label;
+}
 
 export function serveTarget(shot, power) {
   // Overhead motion = a real serve; any other swing = gentle underarm serve.
   return shot === 'serve'
-    ? { label: 'SERVE!', x: rand(-3, 3), z: -5, flight: 0.85 - power * 0.2 }
+    ? { label: shotLabel('SERVE!', power), x: rand(-3, 3), z: -5, flight: 1.15 - power * 0.5 }
     : { label: 'Underarm serve', x: rand(-2, 2), z: -4.5, flight: 1.4 };
 }
 
