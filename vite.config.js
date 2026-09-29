@@ -23,11 +23,13 @@ function remoteRelay() {
           const broadcast = (msg) => {
             for (const p of peers) if (p !== ws && p.readyState === 1) p.send(msg);
           };
-          if (role === 'remote') broadcast(JSON.stringify({ type: 'remote-connected' }));
+          // Roles: game (host screen), guest (online opponent screen), remote (phone, tagged with player p).
+          const player = Number(url.searchParams.get('p')) || undefined;
+          broadcast(JSON.stringify({ type: `${role}-connected`, player }));
           ws.on('message', (data) => broadcast(data.toString()));
           ws.on('close', () => {
             peers.delete(ws);
-            if (role === 'remote') broadcast(JSON.stringify({ type: 'remote-disconnected' }));
+            broadcast(JSON.stringify({ type: `${role}-disconnected`, player }));
             if (!peers.size) rooms.delete(room);
           });
         });

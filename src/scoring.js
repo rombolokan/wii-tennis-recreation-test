@@ -1,10 +1,10 @@
 // Tennis scoring: points (love/15/30/40/deuce/advantage) → games → one set (first to 6, win by 2).
 const CALLS = ['Love', '15', '30', '40'];
 const SPOKEN = { Love: 'love', 15: 'fifteen', 30: 'thirty', 40: 'forty' };
-const NAMES = ['You', 'CPU'];
 const GAMES_TO_WIN_SET = 6;
 
 export function createScore() {
+  let NAMES = ['You', 'CPU'];
   let points = [0, 0];
   let games = [0, 0];
 
@@ -37,6 +37,9 @@ export function createScore() {
       return { announce: pointCall().spoken };
     },
     resetSet() { points = [0, 0]; games = [0, 0]; },
+    setNames(names) { NAMES = names; },
+    get names() { return NAMES; },
+    get totalGames() { return games[0] + games[1]; },
     get display() { return { points: pointCall().display, games: [...games] }; },
   };
 }
@@ -54,7 +57,7 @@ export function renderScoreboard(el, score) {
   el.innerHTML = `
     <table>
       <tr><th></th><th>Games</th><th>Points</th></tr>
-      <tr><td class="you">You</td><td>${games[0]}</td><td>${points[0]}</td></tr>
-      <tr><td class="cpu">CPU</td><td>${games[1]}</td><td>${points[1]}</td></tr>
+      <tr><td class="you">${score.names[0]}</td><td>${games[0]}</td><td>${points[0]}</td></tr>
+      <tr><td class="cpu">${score.names[1]}</td><td>${games[1]}</td><td>${points[1]}</td></tr>
     </table>`;
 }

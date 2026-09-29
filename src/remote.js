@@ -1,13 +1,17 @@
 import { connectRelay } from './relay.js';
 import { createSwingDetector } from './swingDetector.js';
 
-const room = new URLSearchParams(location.search).get('room') || 'default';
+const params = new URLSearchParams(location.search);
+const room = params.get('room') || 'default';
+const player = Number(params.get('p')) || 1;
+document.querySelector('h1').textContent = `🎾 Player ${player}`;
 const statusEl = document.getElementById('status');
 const shotEl = document.getElementById('shot');
 const calEl = document.getElementById('calibrate');
 const LABELS = { forehand: 'Forehand', backhand: 'Backhand', serve: 'Serve / Smash' };
 
 const send = connectRelay(room, 'remote', (msg) => {
+  if (msg.player !== player) return;
   // Feedback from the game: buzz + flash only when the racket actually met the ball.
   if (msg.type === 'hit') {
     navigator.vibrate?.(70);
@@ -18,7 +22,7 @@ const send = connectRelay(room, 'remote', (msg) => {
   }
 }, (ok) => {
   statusEl.textContent = ok ? `Connected to room ${room}` : 'Reconnecting…';
-});
+}, player);
 
 function flash(color) {
   document.body.style.background = color;
@@ -47,7 +51,7 @@ const detector = createSwingDetector(({ feature, type, power }) => {
 
 function swing(type, power) {
   shotEl.textContent = LABELS[type];
-  send({ type: 'swing', shot: type, power });
+  send({ type: 'swing', player, shot: type, power });
 }
 
 document.getElementById('start').onclick = async (ev) => {
