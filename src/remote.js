@@ -50,6 +50,8 @@ const detector = createSwingDetector(({ feature, type, power, raw, spin }) => {
     detector.addStrength(raw);
     navigator.vibrate?.(40);
     calStep++;
+    // Finished all examples of one shot type → longer double buzz.
+    if (calStep % EXAMPLES_PER_TYPE === 0) navigator.vibrate?.([150, 80, 150]);
     if (calStep === calOrder.length) {
       calStep = -1;
       calEl.textContent = 'Recalibrate swings';
@@ -64,7 +66,19 @@ const detector = createSwingDetector(({ feature, type, power, raw, spin }) => {
 function swing(type, power, spin) {
   const spinText = spin > 0.3 ? ' · topspin' : spin < -0.3 ? ' · slice' : '';
   shotEl.textContent = `${LABELS[type]} · ${Math.round(power * 100)}% power${spinText}`;
+  navigator.vibrate?.(50);
+  livePower = Math.max(livePower, power);
   send({ type: 'swing', player, shot: type, power, spin });
+}
+
+// Live power meter: current acceleration, decaying peak.
+const powerEl = document.getElementById('power');
+let livePower = 0;
+function showLivePower(e) {
+  const a = e.acceleration || {};
+  const mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+  livePower = Math.max(livePower * 0.92, Math.min(1, mag / 30));
+  powerEl.style.width = `${livePower * 100}%`;
 }
 
 document.getElementById('start').onclick = async (ev) => {
@@ -73,6 +87,7 @@ document.getElementById('start').onclick = async (ev) => {
     if (res !== 'granted') { statusEl.textContent = 'Motion permission denied'; return; }
   }
   window.addEventListener('devicemotion', detector.handle);
+  window.addEventListener('devicemotion', showLivePower);
   ev.target.textContent = 'Motion enabled ✓';
   ev.target.disabled = true;
   calEl.hidden = false;

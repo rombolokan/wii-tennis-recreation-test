@@ -23,11 +23,16 @@ h1 { margin: 0; font-size: 22px; font-weight: 800; text-shadow: 0 2px 4px #0008;
 .display .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: #9fb4cf; }
 #shot { font-size: 22px; font-weight: 800; margin-top: 4px; min-height: 30px; color: #d7f542; }
 button { display: block; width: 100%; padding: 14px; font-size: 16px; font-weight: 700; border: 0; border-radius: 14px; color: #fff; cursor: pointer; transition: transform 0.08s, opacity 0.2s; }
+[hidden] { display: none !important; }
 button:active { transform: scale(0.97); }
 button:disabled { opacity: 0.6; }
 .primary { background: #d7f542; color: #0f1b2d; box-shadow: 0 4px 12px #0005; } /* tennis-ball yellow */
 .secondary { background: #0f1b2dcc; border: 1px solid #ffffff44; }
 .tip { margin: 0; font-size: 13px; line-height: 1.35; color: #fff; text-shadow: 0 1px 3px #000; }
+
+.logo { align-self: center; width: 62%; height: 44px; object-fit: cover; background: #fff; border-radius: 12px; padding: 0 10px; }
+.meter { height: 10px; margin: 8px 6px 0; border-radius: 5px; background: #ffffff22; overflow: hidden; }
+#power { height: 100%; width: 0; background: linear-gradient(90deg, #d7f542, #ff6b2c 70%, #ff3b3b); transition: width 0.05s linear; }
 
 /* Throat + grip handle holding the shot buttons */
 .throat { width: 70px; height: 26px; background: #ff6b2c; clip-path: polygon(0 0, 100% 0, 70% 100%, 30% 100%); }
