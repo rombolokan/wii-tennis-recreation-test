@@ -163,18 +163,28 @@ export function startHost() {
     const id = ++serveId;
     if (mode === 'cpu' && server === 1) {
       showMessage('CPU serving…');
-      setTimeout(() => id === serveId && state === 'serve' && serve(1, 'serve', 0.6, false), 1200);
+      cpuServe(id);
     } else {
       const who = mode === 'cpu' ? '' : `${score.names[server]}: `;
       showMessage(`${who}Swing to toss the ball up, then swing again as it drops!`);
     }
   }
 
+  // CPU tosses, then swings as the ball drops — or occasionally misses it (fault).
+  function cpuServe(id) {
+    const alive = () => id === serveId && state === 'serve';
+    setTimeout(() => {
+      if (!alive()) return;
+      toss(1);
+      if (Math.random() < ai.level.serveSuccess) setTimeout(() => alive() && tossed && serve(1, 'serve', 0.6, false), 1000);
+    }, 1200);
+  }
+
   function toss(i) {
     tossed = true;
     anim[i] = { shot: 'toss', time: performance.now() };
     vel.set(0, 7.5, 0); // high toss: ~1.5s in the air
-    showMessage(`${mode === 'cpu' ? '' : `${score.names[i]}: `}Now swing!`, 900);
+    if (!(mode === 'cpu' && i === 1)) showMessage(`${mode === 'cpu' ? '' : `${score.names[i]}: `}Now swing!`, 900);
   }
 
   // Missed the tossed ball: first time is a fault, second is a double fault.
@@ -184,6 +194,7 @@ export function startHost() {
     if (++faults >= 2) return awardPoint(1 - server, 'Double fault!');
     fx.speak('Fault');
     showMessage('Fault! Second serve — toss again.');
+    if (mode === 'cpu' && server === 1) cpuServe(serveId);
   }
 
   // Launch ball from its current position to land at (tx, tz) with a given flight time.
