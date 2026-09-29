@@ -17,23 +17,6 @@ canvas { display: block; }
 #message { margin-top: 10px; color: #fff; font-size: 20px; font-weight: 600; text-shadow: 0 2px 4px #0008; }
 #pair { position: fixed; right: 16px; bottom: 16px; background: #fffe; padding: 12px; border-radius: 12px; font-size: 13px; text-align: center; max-width: 360px; box-shadow: 0 2px 8px #0003; }
 #pair { bottom: 56px; }
-#home { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: linear-gradient(#7fd3f7cc, #f6e3b4ee); overflow: auto; }
-#home[hidden] { display: none; }
-.home-card { background: #fff; border-radius: 20px; padding: 24px 28px; width: min(460px, 90vw); box-shadow: 0 8px 30px #0003; }
-.home-card h1 { margin: 0 0 12px; font-size: 26px; }
-.home-card h3 { margin: 16px 0 8px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { border: 2px solid var(--c); background: #fff; color: #1d2b3a; padding: 6px 14px; border-radius: 20px; font-weight: 600; cursor: pointer; }
-.chip.active { background: var(--c); color: #fff; }
-#new-user { display: flex; gap: 6px; margin-top: 10px; }
-#new-user input { flex: 1; padding: 8px 12px; border-radius: 10px; border: 1px solid #0002; font-size: 15px; }
-.home-card button:not(.chip) { border: 0; background: #e8eef5; padding: 8px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; }
-.home-card .actions { display: flex; gap: 8px; margin-top: 20px; }
-.home-card .actions .primary { flex: 1; background: #2a8cff; color: #fff; padding: 12px; font-size: 16px; }
-.home-card .error { color: #e04848; margin-top: 8px; min-height: 1em; }
-.home-card .muted { color: #678; font-weight: 400; font-size: 13px; }
-.scores-link { display: block; margin-top: 12px; font-weight: 600; color: #2a8cff; text-decoration: none; }
-#home-btn { pointer-events: auto; }
 #pair[hidden] { display: none; }
 #pair-toggle { position: fixed; right: 16px; bottom: 16px; border: 0; background: #fffe; padding: 8px 14px; border-radius: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px #0003; }
 #pair .cards { display: flex; gap: 10px; justify-content: center; }

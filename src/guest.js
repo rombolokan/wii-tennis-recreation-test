@@ -10,7 +10,7 @@ const GRAVITY = -9.8;
 
 // Online guest: mirrors the host's match from Player 2's side. The host runs the game;
 // this screen only renders the state it receives and forwards its own swings.
-export function startGuest(room, user) {
+export function startGuest(room) {
   const world = createWorld();
   const { ball, players, env, impact } = world;
   const scoreEl = document.getElementById('score');
@@ -20,8 +20,8 @@ export function startGuest(room, user) {
 
   let anim = [{ shot: null, time: -1 }, { shot: null, time: -1 }];
   let phoneConnected = false;
-  const hint = `You are ${user.name} (Player 2). No phone? D = forehand, A = backhand, W = serve/smash.`;
-  const updatePanel = () => renderPairing(panel, [{ title: `${user.name}'s phone`, url: remoteUrl(room, 2), connected: phoneConnected }], null, hint);
+  const hint = 'You are Player 2. No phone? D = forehand, A = backhand, W = serve/smash.';
+  const updatePanel = () => renderPairing(panel, [{ title: 'Your phone (Player 2)', url: remoteUrl(room, 2), connected: phoneConnected }], null, hint);
   updatePanel();
   msgEl.textContent = 'Connecting to host…';
 
@@ -42,7 +42,7 @@ export function startGuest(room, user) {
     } else if (msg.type === 'game-disconnected') {
       msgEl.textContent = 'The host left the match';
     }
-  }, (ok) => ok && send({ type: 'guest-hello', user })); // tells the host who we are
+  });
 
   const KEYS = { KeyD: 'forehand', KeyA: 'backhand', KeyW: 'serve', Space: 'auto' };
   const swing = (shot) => { unlockAudio(); send({ type: 'swing', player: 2, shot, power: 0.7 }); };
